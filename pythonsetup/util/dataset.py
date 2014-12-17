@@ -330,7 +330,7 @@ class Registrator(AbstractRegistrator):
     def register(self, datum):
         name = self._layout_manager.name(datum)
         filepath = os.path.join(self._dataset_folder, name)
-        entry = self.__storage_manager.save(datum, filepath)
+        entry = self.get_storage_manager().save(datum, filepath)
         self.add_entries(entry)
 
 
@@ -372,9 +372,6 @@ class LabeledDataSet(DataSet):
     def __iter__(self):
         yield self.get_raw_data()
         yield self.get_labels()
-
-
-
 
 
 
@@ -427,7 +424,11 @@ class LabeledSetManager(LayoutManager):
         if label_dict is not None:
             self._dict = dict()
             for key, val in label_dict.iteritems():
-                self._dict[key] = [c for c in val if c in get_valid_chars()]
+                tmp = ""
+                for c in val:
+                    if c in get_valid_chars():
+                        tmp += c
+                self._dict[key] = tmp
 
     def translate(self, label):
         if self._dict is not None:
@@ -445,10 +446,11 @@ class LabeledSetManager(LayoutManager):
         label_str = self.translate(label)
         count = self._history.get(label_str, 0)
         # Create unique name
-        os.path.join(label_str, self.format_name(label_str, count))
+        name_ = os.path.join(label_str, self.format_name(label_str, count))
         # Update the counter
         count += 1
         self._history[label_str] = count
+        return name_
 
 
 def get_temp_folder(suffix="", prefix="tmp", dir=None):

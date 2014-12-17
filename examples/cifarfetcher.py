@@ -43,7 +43,6 @@ def fetch_cifar10(dataset_folder):
 
 def _unpickle(file_):
     dict_ = None
-    print "File :"; file_.__class__, file_
     try:
         with open(file_, 'rb') as f_:
             dict_ = pickle.load(f_)
@@ -138,7 +137,6 @@ class Cifar10Fetcher(LabeledSetFetcher):
 
 
     def _process_and_store(self, tempfile):
-        print "File downloaded"
         extractor = CifarExtractor()
         extractor.extract(tempfile, self._callback)
 
