@@ -81,9 +81,9 @@ class CifarExtractor:
 
     def extract(self, cifar_file, callback_func):
         # Untar the file
-        with get_temp_folder() as temp_folder, tarfile.open(cifar_file) as tar:
+        with get_temp_folder() as temp_folder:#, tarfile.open(cifar_file) as tar:
             # Untaring
-            ls_files, ts_file, labels_file = self._untar(tar, temp_folder)
+            ls_files, ts_file, labels_file = self._untar(cifar_file, temp_folder)
             # Getting the labels 
             label_dict = _unpickle(labels_file)
 
