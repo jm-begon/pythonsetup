@@ -43,7 +43,10 @@ def fetch_cifar10(dataset_folder):
 
 def _unpickle(file_):
     dict_ = None
-    with open(file_, 'rb') as f_:
+    try:
+        with open(file_, 'rb') as f_:
+            dict_ = pickle.load(f_)
+    except TypeError:
         dict_ = pickle.load(f_)
     return dict_
 
