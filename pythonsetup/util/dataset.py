@@ -26,6 +26,7 @@ except ImportError:
     import pickle
 from contextlib import contextmanager, closing
 import string
+from .indexer import Sliceable
 
 def get_valid_chars():
     return "-_.()%s%s" % (string.ascii_letters, string.digits)
@@ -262,10 +263,6 @@ class AbstractRegistrator:
     def close(self):
         pass
 
-    @abstractmethod
-    def get_storage_manager(self):
-        pass
-
     def get_dataset_name(self):
         return self.__name
 
@@ -333,7 +330,7 @@ class Registrator(AbstractRegistrator):
 
     def close(self):
         with open(self._metafile) as f:
-            pickle.dump(self._entries, f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.get_entries(), f, pickle.HIGHEST_PROTOCOL)
 
 
 
