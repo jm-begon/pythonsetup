@@ -214,6 +214,8 @@ class NumpyStorageManager(StorageManager):
     def save(self, datum, filepath):
         self._prepare(filepath)
         np.save(filepath, datum)
+        if isinstance(filepath, str):
+            filepath += ".npy"
         return filepath
 
 
