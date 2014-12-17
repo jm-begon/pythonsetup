@@ -399,8 +399,8 @@ class LabeledStorageManager(StorageManager):
         ------
         entry : pair (filepath, label)
         """
-        _, label = datum
-        self._decorated.save(datum, filepath)
+        actual_datum, label = datum
+        filepath = self._decorated.save(actual_datum, filepath)
         return (filepath, label)
 
 class LabeledSetManager(LayoutManager):
