@@ -9,14 +9,13 @@ __version__ = 'dev'
 
 
 from .indexer import Indexable, Sliceable
-from .dataset import DataSet, Fetcher, URLFetcher, StorageManager
-from .dataset import NumpyStorageManager, LayoutManager, Registrator, awarize
-from .dataset import LabeledDataSet, LabeledDatum, LabeledEntry, TempFolder
-from .dataset import LabeledStorageManager, LabeledSetManager, MultiRegistrator
-from .dataset import get_temp_folder
+from .dataset import DataSet, Fetcher, URLFetcher, LabeledSetFetcher
+from .dataset import StorageManager, NumpyStorageManager, LayoutManager
+from .dataset import LabeledDataSet, TempFolder, LabeledStorageManager
+from .dataset import Registrator, LabeledSetManager, get_temp_folder, awarize
 
 __all__ = ["Indexable", "Sliceable", "DataSet", "Fetcher", "URLFetcher", 
-           "StorageManager", "NumpyStorageManager", "LayoutManager", 
-           "Registrator", "MultiRegistrator", "awarize", "LabeledDataSet", 
-           "LabeledDatum", "LabeledEntry", "LabeledStorageManager", 
-           "LabeledSetManager", "TempFolder", "get_temp_folder"]
+           "LabeledSetFetcher", "StorageManager", "NumpyStorageManager", 
+           "LayoutManager", "Registrator", "awarize", "LabeledDataSet", 
+           "LabeledStorageManager", "LabeledSetManager", "TempFolder", 
+           "get_temp_folder"]

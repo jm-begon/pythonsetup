@@ -76,9 +76,8 @@ class Fetcher:
 
 class URLFetcher(Fetcher):
 
-    def __init__(self, repositories, registrator, is_binary=True):
+    def __init__(self, repositories, is_binary=True):
         self.__repositories = repositories
-        self.__registrator = registrator
         self.__is_binary = is_binary
     
     def get_repositories(self):
@@ -87,11 +86,6 @@ class URLFetcher(Fetcher):
     def is_binary_file(self):
         return self.__is_binary
 
-    def already_done(self):
-        return self.__registrator.already_dumped()
-
-    def _register(self, datum):
-        self.__registrator.register(datum)
 
     def fetch_and_store(self):
         repositories = self.get_repositories()
@@ -104,8 +98,7 @@ class URLFetcher(Fetcher):
                     with closing(urlopen(repository)) as url:
                         # We have our url, we need to dump it into a file
                         shutil.copyfileobj(url, temp)
-                        with self.__registrator:
-                            self._process_and_store(temp)
+                        self._process_and_store(temp)
                     found = True
                     break
                 except HTTPError as e:
@@ -120,21 +113,63 @@ class URLFetcher(Fetcher):
             if not found:
                 raise last_except
 
-    def _get_storage_manager(self):
-        return self.__registrator.get_storage_manager()
-
-    def _get_registrator(self):
-        return self.__registrator
-
-
     @abstractmethod
     def _process_and_store(self, tempfile):
         pass
 
+    @abstractmethod
     def load(self):
-        entries = self.__registrator.get_entries()
-        loader = self._get_storage_manager()
-        return DataSet(entries, loader)
+        pass
+
+class LabeledSetFetcher(URLFetcher):
+    """
+    ==============
+    LabeledSetFetcher
+    ==============
+    A :class:`URLFetcher` for 
+
+    Data format
+    -----------
+    The data are expected to be archived in a tar.gz file with the layout
+    specified at the original dataset site (see 'Reference') (December 2014)
+
+    """
+    def __init__(self, repositories, base_folder, ls_name, ts_name, 
+                 base_storage_manager, is_binary=True):
+        URLFetcher.__init__(self, repositories, is_binary)
+        self._layout_manager = LabeledSetManager()
+        self._base_storage_manager = base_storage_manager
+        self._storage_manager = LabeledStorageManager(base_storage_manager)
+        self._ls_register = Registrator(self._storage_manager, base_folder,
+                                        ls_name, self._layout_manager)
+        self._ts_register = Registrator(self._storage_manager, base_folder,
+                                        ts_name, self._layout_manager)
+
+    def _callback(self, ls, ts, label_dict):
+        self._layout_manager.set_label_dict(label_dict)
+        with self._ls_register:
+            for obj, label in ls:
+                self._ls_register.register((obj, label))
+
+        with self._ts_register:
+            for obj, label in ts:
+                self._ts_register.register((obj, label))
+
+    def already_done(self):
+        return (self._ls_register.already_dumped() and 
+                self._ts_register.already_dumped())
+
+
+    def load(self):
+        ls = LabeledDataSet(self._ls_register.get_entries(),
+                            self._storage_manager)
+        ts = LabeledDataSet(self._ts_register.get_entries(),
+                            self._storage_manager)
+        return ls, ts
+
+    @abstractmethod
+    def _process_and_store(self, tempfile):
+        pass
 
 
 class StorageManager:
@@ -301,60 +336,6 @@ class Registrator(AbstractRegistrator):
             pickle.dump(self._entries, f, pickle.HIGHEST_PROTOCOL)
 
 
-class MultiRegistrator(Registrator):
-
-
-    def __init__(self, registrators, dataset_name):
-        Registrator.__init__(self, registrators[0].get_storage_manager(), 
-                             dataset_name)
-
-        self._current = registrators[0]
-        self._registrators = dict()
-        for registrator in registrators:
-            self._registrators[registrator.get_dataset_name()] = registrator
-
-    def __iter__(self):
-        for registrator in self._registrators.itervalues():
-            yield registrator 
-
-
-    def already_dumped(self):
-        for registrator in self:
-            if not registrator.already_dumped():
-                return False
-        return True
-
-    def register(self, datum):
-        self._current.register(datum)
-
-    def switch(self, dataset_name):
-        previous = self._current.get_dataset_name()
-        self._current = self._registrators[dataset_name]
-        return previous
-
-    def open(self):
-        try:
-            for registrator in self:
-                registrator.open()
-        except:
-            self.close()
-
-    def _unsafe_close(self, registrators):
-        if len(registrators) == 0:
-            return
-        reg = registrators.pop()
-        try:
-            reg.close()
-        finally:
-            self._unsafe_close(registrators)
-
-    def close(self):
-        # Copy the list
-        registrators = [x for x in self]
-        self._unsafe_close(registrators)
-
-
-
 
 def awarize(dataset):
     entries = dataset.seed
@@ -364,7 +345,7 @@ def awarize(dataset):
 
 class LabeledDataSet(DataSet):
     """
-    entries : list of :class:`LabeledEntry`
+    entries : list of pairs (filepath, label)
     """
 
     def __init__(self, entries, labeled_loader, base_dataset_class=DataSet):
@@ -390,31 +371,8 @@ class LabeledDataSet(DataSet):
         yield self.get_labels()
 
 
-class LabeledDatum:
-    def __init__(self, actual_datum, label):
-        self.datum = actual_datum
-        self.label = label
-
-    def __str__(self):
-        return "("+str(self.label)+", "+str(self.datum)+")"
-
-    def __iter__(self):
-        yield self.datum
-        yield self.label
 
 
-class LabeledEntry:
-
-    def __init__(self, filepath, label):
-        self.filepath = filepath
-        self.label = label
-
-    def __str__(self):
-        return "("+str(self.label)+", "+str(self.filepath)+")"
-
-    def __iter__(self):
-        yield self.filepath
-        yield self.label
 
 
 class LabeledStorageManager(StorageManager):
@@ -427,21 +385,21 @@ class LabeledStorageManager(StorageManager):
 
     def load(self, entry):
         """
-        entry : :class:`LabeledEntry`
+        entry : pair (filepath, label)
         """
         filepath, label = entry
         return self._decorated.load(filepath), label
 
     def save(self, datum, filepath):
         """
-        datum : :class:`LabeledDatum`
+        datum : pair (actual_datum, label)
         Return
         ------
-        entry : class:`LabeledEntry`
+        entry : pair (filepath, label)
         """
         _, label = datum
         self._decorated.save(datum, filepath)
-        return LabeledEntry(filepath, label)
+        return (filepath, label)
 
 class LabeledSetManager(LayoutManager):
 
@@ -478,7 +436,7 @@ class LabeledSetManager(LayoutManager):
 
     def name(self, datum):
         """
-        datum : :class:`LabeledDatum`
+        datum : pair (acutal_datum, label)
         """
         _, label = datum
         label_str = self.translate(label)

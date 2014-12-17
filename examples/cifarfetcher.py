@@ -15,20 +15,12 @@ try:
 except ImportError:
     import pickle
 
-from main.util.dataset import URLFetcher, awarize, get_temp_folder
-from main.util.dataset import LabeledDatum, LabeledSetManager, Registrator
-from main.util.dataset import MultiRegistrator
+from main.util.dataset import LabeledSetFetcher, get_temp_folder, NumpyStorageManager
 
 
 def get_cifar10_repositories():
     """Holds cifar 10 rep."""
     return ["http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"]
-
-def get_ls_name():
-    return "cifar10_ls"
-
-def get_ts_name():
-    return "cifar10_ts"
 
 def fetch_cifar10(dataset_folder):
     """
@@ -44,43 +36,62 @@ def fetch_cifar10(dataset_folder):
     TODO
     """
     repositories = get_cifar10_repositories()
-    storage_manager = None  #  TODO
-    layout_manager = LabeledSetManager()
-    ls_registrator = Registrator(storage_manager, dataset_folder, 
-                                 get_ls_name(), layout_manager)
-    ts_registrator = Registrator(storage_manager, dataset_folder,
-                                 get_ts_name(), layout_manager)
-    registrator = MultiRegistrator([ls_registrator, ts_registrator], "cifar10")
-
-    fetcher = Cifar10Fetcher(repositories, registrator, layout_manager, True)
+    fetcher = Cifar10Fetcher(repositories, dataset_folder)
     return fetcher.fetch()
 
-def unpickle(file_):
+
+
+def _unpickle(file_):
     dict_ = None
     with open(file_, 'rb') as f_:
         dict_ = pickle.load(f_)
     return dict_
 
-class Cifar10Fetcher(URLFetcher):
-    """
-    ==============
-    Cifar10Fetcher
-    ==============
-    A :class:`URLFetcher` for the Cifar10 BD. 
+# TODO : use the callback with a view of the sets (img generator)
 
-    Data format
-    -----------
-    The data are expected to be archived in a tar.gz file with the layout
-    specified at the original dataset site (see 'Reference') (December 2014)
+class CifarImgGenerator:
 
-    Reference
-    ---------
-    See http://www.cs.toronto.edu/~kriz/cifar.html for information
-    about the dataset
-    """
-    def __init__(self, repositories, multi_registrator, layout, is_binary=True):
-        URLFetcher.__init__(self, repositories, multi_registrator, is_binary)
-        self._layout_manager = layout
+    def __init__(self, batch_files):
+        self._batches = batch_files
+        self._current = None
+
+    def _build_rgb(self, np_row):
+        red = np_row[0:1024].reshape((32,32))
+        green = np_row[1024:2048].reshape((32,32))
+        blue = np_row[2048:3072].reshape((32,32))
+        return np.dstack((red, green, blue))
+
+
+    def __iter__(self):
+        for batch in self._batches:
+            batch_dict = _unpickle(batch)
+            X = batch_dict["data"]
+            labels = batch_dict["labels"]
+            for r in xrange(X.shape[0]):
+                X_ = self._build_rgb(X[r])
+                y_ = labels[r]
+                yield X_, y_
+
+
+
+
+
+
+class CifarExtractor:
+
+    def extract(self, cifar_file, callback_func):
+        # Untar the file
+        with get_temp_folder() as temp_folder, tarfile.open(cifar_file) as tar:
+            # Untaring
+            ls_files, ts_file, labels_file = self._untar(tar, temp_folder)
+            # Getting the labels 
+            label_dict = _unpickle(labels_file)
+
+            # Calling back
+            ls = CifarImgGenerator(ls_files)
+            ts = CifarImgGenerator([ts_file])
+
+            callback_func(ls, ts, label_dict)
 
     def _untar(self, tar, folder):
         # Collecting Ls/Ts set file names
@@ -101,59 +112,34 @@ class Cifar10Fetcher(URLFetcher):
 
         return ls_files, ts_file, labels
 
-    def _build_rgb(self, np_row):
-        red = np_row[0:1024].reshape((32,32))
-        green = np_row[1024:2048].reshape((32,32))
-        blue = np_row[2048:3072].reshape((32,32))
-        return np.dstack((red, green, blue))
 
-    def _process_batch(self, batch_file):
-        batch_dict = unpickle(batch_file)
-        X = batch_dict["data"]
-        labels = batch_dict["labels"]
-        for r in xrange(X.shape[0]):
-            np_img = self._build_rgb(X[r])
-            self._register(LabeledDatum(np_img, labels[r]))
+class Cifar10Fetcher(LabeledSetFetcher):
+    """
+    ==============
+    Cifar10Fetcher
+    ==============
+    A :class:`LabeledSetFetcher` for the Cifar10 BD. 
+
+    Data format
+    -----------
+    The data are expected to be archived in a tar.gz file with the layout
+    specified at the original dataset site (see 'Reference') (December 2014)
+
+    Reference
+    ---------
+    See http://www.cs.toronto.edu/~kriz/cifar.html for information
+    about the dataset
+    """
+    def __init__(self, repositories, base_folder, is_binary=True):
+        LabeledSetFetcher.__init__(self, repositories, base_folder, 
+                                   "cifar10_ls", "cifar10_ts", 
+                                   NumpyStorageManager(), is_binary)
 
 
     def _process_and_store(self, tempfile):
-        # Untar the file
-        with get_temp_folder() as temp_folder, tarfile.open(tempfile) as tar:
-            # Untaring
-            ls_files, ts_file, labels_file = self._untar(tar, temp_folder)
-            # Getting the labels
-            label_dict = unpickle(labels_file)
-            # Setting the dictionary in the layout manager
-            self._layout_manager.set_label_dict(label_dict)
+        extractor = CifarExtractor()
+        extractor.extract(tempfile, self._callback)
 
-            registrator = self._get_registrator()
-
-            # Processing the ls files
-            registrator.switch(get_ls_name())
-            for ls_file in ls_files:
-                self._process_batch(ls_file)
-
-            # Processing the ts files
-            registrator.switch(get_ts_name())
-            self._process_batch(ts_file)
-
-
-
-
-    def load(self):
-        registrator = self._get_registrator()
-
-        # Learning set
-        registrator.switch(get_ls_name())
-        dataset = URLFetcher.load(self)
-        ls = awarize(dataset)
-
-        # Testing set
-        registrator.switch(get_ts_name())
-        dataset = URLFetcher.load(self)
-        ts = awarize(dataset)
-
-        return ls, ts
 
 
 
