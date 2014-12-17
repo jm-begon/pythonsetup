@@ -188,7 +188,9 @@ class StorageManager:
         pass
 
     def load(self, entry):
-        return pickle.load(entry)
+        with open(entry) as f:
+            tmp = pickle.load(f)
+        return tmp
 
     def _prepare(self, filepath):
         folder, _ = os.path.split(filepath)
@@ -197,7 +199,7 @@ class StorageManager:
     
     def save(self, datum, filepath):
         self._prepare(filepath)
-        with open(filepath) as f:
+        with open(filepath, "wb") as f:
             pickle.dump(datum, f, pickle.HIGHEST_PROTOCOL)
         return filepath
 
@@ -319,7 +321,8 @@ class Registrator(AbstractRegistrator):
         if not os.path.exists(self._dataset_folder):
             os.mkdir(self._dataset_folder)
         if os.path.exists(self._metafile):
-            self.set_entries(pickle.load(self._metafile))
+            with open(self._metafile) as f:
+                self.set_entries(pickle.load(f))
         else:
             self.set_entries([])
 
@@ -432,7 +435,7 @@ class LabeledSetManager(LayoutManager):
         return str(label)
 
     def format_name(self, label_str, count):
-        return label_str+"_"+count
+        return label_str+"_"+str(count)
 
     def name(self, datum):
         """
