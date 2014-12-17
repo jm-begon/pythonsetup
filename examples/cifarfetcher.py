@@ -51,7 +51,6 @@ def _unpickle(file_):
         dict_ = pickle.load(file_)
     return dict_
 
-# TODO : use the callback with a view of the sets (img generator)
 
 class CifarImgGenerator:
 
@@ -78,9 +77,6 @@ class CifarImgGenerator:
 
 
 
-
-
-
 class CifarExtractor:
 
     def extract(self, cifar_file, callback_func):
@@ -89,7 +85,10 @@ class CifarExtractor:
             # Untaring
             ls_files, ts_file, labels_file = self._untar(tar)
             # Getting the labels 
-            label_dict = _unpickle(labels_file)
+            label_list = _unpickle(labels_file)["label_names"]
+            label_dict = dict()
+            for i, label in enumerate(label_list):
+                label_dict[i] = label
 
             # Calling back
             ls = CifarImgGenerator(ls_files)
@@ -105,7 +104,8 @@ class CifarExtractor:
         labels = None
         for member in members:
             if member.name.find("data_batch_") > 0:
-                ls_files[member.name[-1]] = tar.extractfile(member.name)
+                index = int(member.name[-1]) - 1
+                ls_files[index] = tar.extractfile(member.name)
             if member.name.endswith("test_batch"):
                 ts_file = tar.extractfile(member.name)
             if member.name.endswith("batches.meta"):

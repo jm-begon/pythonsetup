@@ -7,7 +7,7 @@ __author__ = "Begon Jean-Michel <jm.begon@gmail.com>"
 __copyright__ = "3-clause BSD License"
 __version__ = 'dev'
 
-from .cifarfetcher import fetch_cifar10
+from cifarfetcher import fetch_cifar10
 
 if __name__ == "__main__":
     folder = "/home/jmbegon/jmbegon/testcifar/"

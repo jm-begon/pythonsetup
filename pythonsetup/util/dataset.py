@@ -99,6 +99,9 @@ class URLFetcher(Fetcher):
                     with closing(urlopen(repository)) as url:
                         # We have our url, we need to dump it into a file
                         shutil.copyfileobj(url, temp)
+                        # Reseting pointer at the start of the file
+                        temp.seek(0)
+                        # Processing the file
                         self._process_and_store(temp)
                     found = True
                     break
@@ -329,7 +332,7 @@ class Registrator(AbstractRegistrator):
 
 
     def close(self):
-        with open(self._metafile) as f:
+        with open(self._metafile, "wb") as f:
             pickle.dump(self.get_entries(), f, pickle.HIGHEST_PROTOCOL)
 
 
