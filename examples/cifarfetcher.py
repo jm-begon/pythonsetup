@@ -15,7 +15,7 @@ try:
 except ImportError:
     import pickle
 
-from pythonsetup.util.dataset import LabeledSetFetcher, get_temp_folder, NumpyStorageManager
+from pythonsetup.util.dataset import LabeledSetFetcher, NumpyStorageManager
 
 
 def get_cifar10_repositories():
@@ -43,11 +43,12 @@ def fetch_cifar10(dataset_folder):
 
 def _unpickle(file_):
     dict_ = None
+    print "File :"; file_.__class__, file_
     try:
         with open(file_, 'rb') as f_:
             dict_ = pickle.load(f_)
     except TypeError:
-        dict_ = pickle.load(f_)
+        dict_ = pickle.load(file_)
     return dict_
 
 # TODO : use the callback with a view of the sets (img generator)
@@ -84,9 +85,9 @@ class CifarExtractor:
 
     def extract(self, cifar_file, callback_func):
         # Untar the file
-        with get_temp_folder() as temp_folder, tarfile.open(fileobj=cifar_file) as tar:
+        with tarfile.open(fileobj=cifar_file) as tar:
             # Untaring
-            ls_files, ts_file, labels_file = self._untar(tar, temp_folder)
+            ls_files, ts_file, labels_file = self._untar(tar)
             # Getting the labels 
             label_dict = _unpickle(labels_file)
 
@@ -96,7 +97,7 @@ class CifarExtractor:
 
             callback_func(ls, ts, label_dict)
 
-    def _untar(self, tar, folder):
+    def _untar(self, tar):
         # Collecting Ls/Ts set file names
         members = tar.getmembers()
         ls_files = [""]*5
@@ -104,14 +105,11 @@ class CifarExtractor:
         labels = None
         for member in members:
             if member.name.find("data_batch_") > 0:
-                ls_files[member.name[-1]] = os.path.join(folder, member.name)
+                ls_files[member.name[-1]] = tar.extractfile(member.name)
             if member.name.endswith("test_batch"):
-                ts_file = os.path.join(folder, member.name)
+                ts_file = tar.extractfile(member.name)
             if member.name.endswith("batches.meta"):
-                labels = os.path.join(folder, member.name)
-
-        # Extracting the files
-        tar.extractall(folder)
+                labels = tar.extractfile(member.name)
 
         return ls_files, ts_file, labels
 
