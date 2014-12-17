@@ -12,7 +12,7 @@ import shutil
 from distutils.command.clean import clean as Clean
 
 def main_dir():
-    return "main"
+    return "pythonsetup"
 
 class CleanCommand(Clean):
     description = "Remove build directories, and compiled file in the source tree"

@@ -15,7 +15,7 @@ try:
 except ImportError:
     import pickle
 
-from main.util.dataset import LabeledSetFetcher, get_temp_folder, NumpyStorageManager
+from pythonsetup.util.dataset import LabeledSetFetcher, get_temp_folder, NumpyStorageManager
 
 
 def get_cifar10_repositories():

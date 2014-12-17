@@ -8,16 +8,12 @@ __copyright__ = "3-clause BSD License"
 __version__ = 'dev'
 
 
-import os
-import os.path
-
-import numpy
 from numpy.distutils.misc_util import Configuration
 
 
 def configuration(parent_package="", top_path=None):
 
-    config = Configuration("main", parent_package, top_path)
+    config = Configuration("pythonsetup", parent_package, top_path)
 
     config.add_subpackage('aaa')
     config.add_subpackage('bbb')
