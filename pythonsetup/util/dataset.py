@@ -24,9 +24,10 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
-from contextlib import contextmanager, closing
 import string
+import logging
 from .indexer import Sliceable
+from .logger import log_transfer
 
 def get_valid_chars():
     return "-_.()%s%s" % (string.ascii_letters, string.digits)
@@ -51,11 +52,51 @@ class DataSet(Sliceable):
     def get_loader(self):
         return self.loader
 
+class Chunker:
+
+    def __init__(self, url, chunk_size=8192):
+        self._url = url
+        self._response = None
+        self._size = 0
+        self._chunk_size = chunk_size
+
+    def __enter__(self):
+        self._response = urlopen(self._url)
+
+    def __exit__(self, type, value, traceback):
+        self._response.close()
+        self._response = None
+
+    def __len__(self):
+        if self._response is None:
+            raise TypeError("URL not opened yet")
+        if self._size is None:
+            try:
+                self._size = int(self._response.info().getheader('Content-Length').strip())
+            except AttributeError:
+                raise TypeError("Cannot determine length")
+        return self._size
+
+    def __iter__(self):
+        if self._response is None:
+            raise StopIteration("URL not opened")
+        while True:
+            chunk = self._response.read(self._chunk_size)
+            if not chunk:
+                raise StopIteration()
+            yield chunk
+
+    def get_chunk_size(self):
+        return self._chunk_size
 
 
 class Fetcher:
 
     __metaclass__ = ABCMeta
+
+    def __init__(self):
+        pass
+
     
     def fetch(self):
         if not self.already_done():
@@ -75,11 +116,19 @@ class Fetcher:
         pass
 
 
+
+
+
 class URLFetcher(Fetcher):
 
-    def __init__(self, repositories, is_binary=True):
+    def __init__(self, repositories, dataset_name, is_binary=True, 
+                 logger_name=__name__, chunk_size=8192):
+        Fetcher.__init__(self)
         self.__repositories = repositories
         self.__is_binary = is_binary
+        self.__chunk_size = chunk_size
+        self.__name = dataset_name
+        self.__logger = logging.getLogger(logger_name)
     
     def get_repositories(self):
         return self.__repositories
@@ -96,23 +145,36 @@ class URLFetcher(Fetcher):
             found = False
             for repository in repositories:
                 try:
-                    with closing(urlopen(repository)) as url:
+                    with Chunker(repository, self.__chunk_size) as chunker:
                         # We have our url, we need to dump it into a file
-                        shutil.copyfileobj(url, temp)
+                        # Starting the actual download  
+                        for chunk in log_transfer(chunker, 
+                                                  chunker.get_chunk_size(),
+                                                  "Downloading "+self.__name,
+                                                  self.__logger.info):
+                            temp.write(chunk)
+                        
+                        
                         # Reseting pointer at the start of the file
                         temp.seek(0)
+
                         # Processing the file
                         self._process_and_store(temp)
                     found = True
                     break
-                except HTTPError as e:
-                    # TODO : log
-                    last_except = e
-                    if e.code not in [403, 404]:
-                        raise e
-                except URLError as e:
-                    # TODO : log e.reason
-                    last_except = e
+                except HTTPError as exception:
+                    self.__logger.error("Could not use repository '"+
+                                        str(repository)+"'. Error code is '"+
+                                        exception.code+"' ("+
+                                        exception.message+")") 
+                    last_except = exception
+                    if exception.code not in [403, 404]:
+                        raise exception
+                except URLError as exception:
+                    self.__logger.error("Could not use repository '"+
+                                        str(repository)+"' ("+
+                                        exception.message+")")
+                    last_except = exception
             # Checking we have indeed received a dataset
             if not found:
                 raise last_except
