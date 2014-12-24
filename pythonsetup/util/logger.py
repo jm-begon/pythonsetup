@@ -290,7 +290,7 @@ class Formater:
         try:
             nb_steps = len(task)
             return self._format_func(progress)+"/"+self._format_func(nb_steps)
-        except TypeError:
+        except TypeError, AttributeError:
             return self._format_func(progress)
 
 

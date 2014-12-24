@@ -70,12 +70,9 @@ class Chunker:
 
     def __len__(self):
         if self._response is None:
-            raise TypeError("URL not opened yet")
+            raise AttributeError("URL not opened yet")
         if self._size is None:
-            try:
-                self._size = int(self._response.info().getheader('Content-Length').strip())
-            except AttributeError:
-                raise TypeError("Cannot determine length")
+            self._size = int(self._response.info().getheader('Content-Length').strip())
         return self._size
 
     def __iter__(self):
