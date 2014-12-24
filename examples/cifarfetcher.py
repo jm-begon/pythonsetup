@@ -130,10 +130,12 @@ class Cifar10Fetcher(LabeledSetFetcher):
     See http://www.cs.toronto.edu/~kriz/cifar.html for information
     about the dataset
     """
-    def __init__(self, repositories, base_folder, is_binary=True):
-        LabeledSetFetcher.__init__(self, repositories, base_folder, 
+    def __init__(self, repositories, base_folder, logger_name=__name__,
+                 is_binary=True):
+        LabeledSetFetcher.__init__(self, repositories, "cifar", base_folder, 
                                    "cifar10_ls", "cifar10_ts", 
-                                   NumpyStorageManager(), is_binary)
+                                   NumpyStorageManager(), logger_name, 
+                                   is_binary)
 
 
     def _process_and_store(self, tempfile):

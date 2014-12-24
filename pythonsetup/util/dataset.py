@@ -62,6 +62,7 @@ class Chunker:
 
     def __enter__(self):
         self._response = urlopen(self._url)
+        return self
 
     def __exit__(self, type, value, traceback):
         self._response.close()
@@ -193,16 +194,12 @@ class LabeledSetFetcher(URLFetcher):
     LabeledSetFetcher
     ==============
     A :class:`URLFetcher` for 
-
-    Data format
-    -----------
-    The data are expected to be archived in a tar.gz file with the layout
-    specified at the original dataset site (see 'Reference') (December 2014)
-
     """
-    def __init__(self, repositories, base_folder, ls_name, ts_name, 
-                 base_storage_manager, is_binary=True):
-        URLFetcher.__init__(self, repositories, is_binary)
+    def __init__(self, repositories, dataset_name, logger_name,
+                 base_folder, ls_name, ts_name, base_storage_manager, 
+                 is_binary=True):
+        URLFetcher.__init__(self, repositories, dataset_name, is_binary, 
+                            logger_name)
         self._layout_manager = LabeledSetManager()
         self._base_storage_manager = base_storage_manager
         self._storage_manager = LabeledStorageManager(base_storage_manager)
