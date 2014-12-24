@@ -378,12 +378,12 @@ def log_iteration(composite_generator, name=None, log_func=discard,
 
 def log_loop(generator, name=None, log_func=discard, 
              formater=Formater(), log_ratio=0.01):
-    return log_loop(CompositeGenerator(generator), name, log_func,
-                    formater, log_ratio)
+    return log_iteration(CompositeGenerator(generator), name, log_func,
+                         formater, log_ratio)
 
 
 def log_transfer(generator, chunck_size, name=None, log_func=discard,
                  formater=Formater(format_func=format_size), log_ratio=0.01):
-    return log_loop(CompositeGenerator(generator, chunck_size), name, log_func,
-                    formater, log_ratio)
+    return log_iteration(CompositeGenerator(generator, chunck_size), name, 
+                         log_func, formater, log_ratio)
 
