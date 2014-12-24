@@ -195,9 +195,9 @@ class LabeledSetFetcher(URLFetcher):
     ==============
     A :class:`URLFetcher` for 
     """
-    def __init__(self, repositories, dataset_name, logger_name,
+    def __init__(self, repositories, dataset_name,
                  base_folder, ls_name, ts_name, base_storage_manager, 
-                 is_binary=True):
+                 logger_name=__name__, is_binary=True):
         URLFetcher.__init__(self, repositories, dataset_name, is_binary, 
                             logger_name)
         self._layout_manager = LabeledSetManager()
