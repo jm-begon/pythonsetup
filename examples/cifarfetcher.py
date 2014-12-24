@@ -22,7 +22,7 @@ def get_cifar10_repositories():
     """Holds cifar 10 rep."""
     return ["http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"]
 
-def fetch_cifar10(dataset_folder):
+def fetch_cifar10(dataset_folder, logger_name):
     """
     Fetch, write, load the cifar10 dataset
 
@@ -36,7 +36,7 @@ def fetch_cifar10(dataset_folder):
     TODO
     """
     repositories = get_cifar10_repositories()
-    fetcher = Cifar10Fetcher(repositories, dataset_folder)
+    fetcher = Cifar10Fetcher(repositories, dataset_folder, logger_name)
     return fetcher.fetch()
 
 

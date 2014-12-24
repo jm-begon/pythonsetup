@@ -164,10 +164,10 @@ class ProgressableTask:
         """
         return self._nb_steps
 
-    def ___len__(self):
+    def __len__(self):
         steps =  self.get_nb_steps()
         if steps is None:
-            raise TypeError("Unbounded task")
+            raise AttributeError("Unbounded task")
         return steps
 
     def update(self, progress):
@@ -299,7 +299,7 @@ class Formater:
         str_nb_steps = "????"
         try:
             str_nb_steps = self._format_func(len(task))
-        except TypeError:
+        except TypeError, AttributeError:
             pass
         return str_nb_steps
 
@@ -349,7 +349,7 @@ def log_iteration(composite_generator, name=None, log_func=discard,
     length = None
     try:
         length = len(composite_generator)
-    except TypeError:
+    except TypeError, AttributeError:
         pass
     task = ProgressableTask(length, name)
     
