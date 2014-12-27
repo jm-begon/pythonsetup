@@ -33,7 +33,7 @@ def fetch_cifar10(dataset_folder, logger_name):
 
     Return
     ------
-    TODO
+    (learning_set, testing_set)
     """
     repositories = get_cifar10_repositories()
     fetcher = Cifar10Fetcher(repositories, dataset_folder, logger_name)

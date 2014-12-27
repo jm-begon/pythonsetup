@@ -57,7 +57,7 @@ class Chunker:
     def __init__(self, url, chunk_size=8192):
         self._url = url
         self._response = None
-        self._size = 0
+        self._size = None
         self._chunk_size = chunk_size
 
     def __enter__(self):
@@ -72,7 +72,8 @@ class Chunker:
         if self._response is None:
             raise AttributeError("URL not opened yet")
         if self._size is None:
-            self._size = int(self._response.info().getheader('Content-Length').strip())
+            tmp = self._response.info().getheader('Content-Length').strip()
+            self._size = int(tmp)
         return self._size
 
     def __iter__(self):
@@ -120,13 +121,14 @@ class Fetcher:
 class URLFetcher(Fetcher):
 
     def __init__(self, repositories, dataset_name, is_binary=True, 
-                 logger_name=__name__, chunk_size=8192):
+                 logger_name=__name__, chunk_size=8192, log_ratio=0.001):
         Fetcher.__init__(self)
         self.__repositories = repositories
         self.__is_binary = is_binary
         self.__chunk_size = chunk_size
         self.__name = dataset_name
         self.__logger = logging.getLogger(logger_name)
+        self.__log_ratio = log_ratio
     
     def get_repositories(self):
         return self.__repositories
@@ -149,7 +151,8 @@ class URLFetcher(Fetcher):
                         for chunk in log_transfer(chunker, 
                                                   chunker.get_chunk_size(),
                                                   "Downloading "+self.__name,
-                                                  self.__logger.info):
+                                                  self.__logger.info,
+                                                  log_ratio=self.__log_ratio):
                             temp.write(chunk)
                         
                         
